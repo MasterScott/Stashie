@@ -280,6 +280,7 @@ namespace Stashie
             {
                 Keyboard.KeyUp(Keys.LControlKey);
                 CoroutineWorker.Done();
+                LogError($"When stashie working, stash UI was  closed, error happens in tab #{visibleStashIndex}",5);
             }
             if (CoroutineWorker != null && CoroutineWorker.DoWork && DebugTimer.ElapsedMilliseconds > 15000)
             {
