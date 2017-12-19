@@ -441,13 +441,14 @@ namespace Stashie
                         typeOfCurrentVisibleStash == InventoryType.DivinationStash)
                     {
                         var sended = false;
-                        var visibleInventoryItems = GameController.Game.IngameState.IngameUi
-                            .InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
+                        
                         string pathCheck = "Maps";
                         if (typeOfCurrentVisibleStash == InventoryType.DivinationStash)
                             pathCheck = "DivinationCards";
                         while (!sended)
                         {
+                            var visibleInventoryItems = GameController.Game.IngameState.IngameUi
+                                .InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
                             sended = true;
                             foreach (var item in visibleInventoryItems)
                             {
