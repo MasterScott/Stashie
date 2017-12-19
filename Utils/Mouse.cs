@@ -8,13 +8,15 @@
 
 #endregion
 
+using System;
+using System.Collections;
 using System.Runtime.InteropServices;
-using System.Threading;
+using PoeHUD.Framework;
 using SharpDX;
 
 namespace Stashie.Utils
 {
-    public class Mouse
+  public class Mouse
     {
         [DllImport("user32.dll")]
         public static extern bool SetCursorPos(int x, int y);
@@ -34,9 +36,10 @@ namespace Stashie.Utils
 
         // 
         private const int MOVEMENT_DELAY = 10;
-        private const int CLICK_DELAY = 1;
 
-        
+        private const int CLICK_DELAY = 5;
+
+
 
         /// <summary>
         /// Sets the cursor position relative to the game window.
@@ -47,7 +50,7 @@ namespace Stashie.Utils
         /// <returns></returns>
         public static bool SetCursorPos(int x, int y, RectangleF gameWindow)
         {
-            return SetCursorPos(x + (int) gameWindow.X, y + (int) gameWindow.Y);
+            return SetCursorPos(x + (int)gameWindow.X, y + (int)gameWindow.Y);
         }
 
         /// <summary>
@@ -58,8 +61,8 @@ namespace Stashie.Utils
         /// <returns></returns>
         public static bool SetCurosPosToCenterOfRec(RectangleF position, RectangleF gameWindow)
         {
-            return SetCursorPos((int) (gameWindow.X + position.Center.X),
-                (int) (gameWindow.Y + position.Center.Y));
+            return SetCursorPos((int)(gameWindow.X + position.Center.X),
+                (int)(gameWindow.Y + position.Center.Y));
         }
         ////////////////////////////////////////////////////////////
 
@@ -110,17 +113,42 @@ namespace Stashie.Utils
             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
         }
 
-        public static void SetCursorPosAndLeftClick(Vector2 coords, int extraDelay)
+        public static IEnumerator SetCursorPosAndLeftClick(Vector2 coords, int extraDelay)
         {
-            var posX = (int) coords.X;
-            var posY = (int) coords.Y;
+            var posX = (int)coords.X;
+            var posY = (int)coords.Y;
             SetCursorPos(posX, posY);
-            Thread.Sleep(MOVEMENT_DELAY + extraDelay);
+            yield return  new WaitTime(MOVEMENT_DELAY + extraDelay);
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-            Thread.Sleep(CLICK_DELAY);
+            yield return  new WaitTime(CLICK_DELAY);
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
         }
+        public static IEnumerator SetCursorPosAndLeftClickHuman(Vector2 coords, int extraDelay = 0)
+        {
+            var posX = (int)coords.X;
+            var posY = (int)coords.Y;
+            yield return SetCursorPosHuman(coords);
+            yield return new WaitTime(MOVEMENT_DELAY+extraDelay);
+            yield return LeftClick(coords);
+        }
 
+        
+        public static IEnumerator LeftClick(Vector2 check = new Vector2())
+        {
+            
+                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                yield return new WaitTime(CLICK_DELAY);
+                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+            
+        }
+        
+        
+        public static IEnumerator RightClick(Vector2 check = new Vector2())
+        {
+                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0);
+                yield return new WaitTime(CLICK_DELAY);
+                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0);
+        }
         public static void VerticalScroll(bool forward, int clicks)
         {
             if (forward)
@@ -132,5 +160,44 @@ namespace Stashie.Utils
                 mouse_event(MOUSE_EVENT_WHEEL, 0, 0, -(clicks * 120), 0);
             }
         }
+        #region MyFix
+        private static void SetCursorPosition(float X, float Y)
+        {
+            SetCursorPos((int)X, (int)Y);
+        }
+        public static Vector2 GetCursorPositionVector()
+        {
+            Point currentMousePoint = new Point(0, 0);
+            currentMousePoint = GetCursorPosition();
+            return new Vector2(currentMousePoint.X, currentMousePoint.Y);
+        }
+
+        public static void SetCursorPos(Vector2 vec)
+        {
+            SetCursorPos((int)vec.X, (int)vec.Y);
+        }
+
+
+        public static int speedMouse = 10;
+
+        public static IEnumerator SetCursorPosHuman(Vector2 vec)
+        {
+            var step = (float) Math.Sqrt(Vector2.Distance(GetCursorPositionVector(), vec)) * speedMouse/20;
+            if (step > 6)
+            {
+                for (int i = 0; i < step; i++)
+                {
+                    var vector2 = Vector2.SmoothStep(GetCursorPositionVector(), vec, i / step);
+                    SetCursorPos((int) vector2.X, (int) vector2.Y);
+                    yield return new WaitTime(1);
+                    
+                }
+            }
+            else
+            {
+                SetCursorPos(vec);
+            }
+        }
+        #endregion
     }
 }

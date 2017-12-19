@@ -8,9 +8,11 @@
 
 #endregion
 
+using System.Collections;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using PoeHUD.Framework;
 
 namespace Stashie.Utils
 {
@@ -36,13 +38,19 @@ namespace Stashie.Utils
             keybd_event((byte) key, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0); //0x7F
         }
 
-        public static void KeyPress(Keys key)
+        public static IEnumerator KeyPress(Keys key)
         {
             KeyDown(key);
-            Thread.Sleep(ACTION_DELAY);
+            yield return new WaitTime(ACTION_DELAY);
             KeyUp(key);
         }
 
+        public static IEnumerator KeyPressCoroutine(Keys key)
+        {
+            KeyDown(key);
+            yield return new WaitTime(ACTION_DELAY);
+            KeyUp(key);
+        }
         [DllImport("USER32.dll")]
         private static extern short GetKeyState(int nVirtKey);
 

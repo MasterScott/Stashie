@@ -23,18 +23,20 @@ namespace Stashie.Settings
             RequireHotkey = true;
             DropHotkey = Keys.F3;
             ExtraDelay = new RangeNode<int>(0, 0, 2000);
+            MouseSpeed = new RangeNode<int>(10, 0, 50);
             BlockInput = new ToggleNode(false);
-
+            UseArrow = new ToggleNode(true);
             RefillCurrency = false;
             CurrencyStashTab = new ListIndexNode();
             AllowHaveMore = false;
             CustomFilterOptions = new Dictionary<string, ListIndexNode>();
             CustomRefillOptions = new Dictionary<string, RangeNode<int>>();
-
             VisitTabWhenDone = false;
             TabToVisitWhenDone = new RangeNode<int>(0, 0, 40);
+
         }
 
+      
         [Menu("Settings", 500)]
         public EmptyNode Settings { get; set; }
 
@@ -67,5 +69,10 @@ namespace Stashie.Settings
         public List<string> AllStashNames = new List<string>();
         public Dictionary<string, ListIndexNode> CustomFilterOptions;
         public Dictionary<string, RangeNode<int>> CustomRefillOptions;
+
+        [Menu("Use keyboard arrow","For switch",5000,500)]
+        public ToggleNode UseArrow { get; set; }
+        [Menu("Mouse Steps","",5001,500)]
+        public RangeNode<int> MouseSpeed { get; set; }
     }
 }
