@@ -270,6 +270,7 @@ namespace Stashie
             }
             if (CoroutineWorker != null && CoroutineWorker.IsDone)
             {
+                Keyboard.KeyUp(Keys.LControlKey);
                 CoroutineWorker = null;
             }
             var uiTabsOpened = GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible &&
@@ -277,14 +278,16 @@ namespace Stashie
 
             if (!uiTabsOpened && CoroutineWorker != null && CoroutineWorker.DoWork)
             {
+                Keyboard.KeyUp(Keys.LControlKey);
                 CoroutineWorker.Done();
             }
             if (CoroutineWorker != null && CoroutineWorker.DoWork && DebugTimer.ElapsedMilliseconds > 15000)
             {
-                LogError("Stopped because work more than 15 sec", 5);
+                LogError($"Stopped because work more than 15 sec. Error in {GetIndexOfCurrentVisibleTab()} type {GetTypeOfCurrentVisibleStash()} visibleStashIndex: {visibleStashIndex}", 5);
                 CoroutineWorker?.Done();
                 DebugTimer.Restart();
                 DebugTimer.Stop();
+                Keyboard.KeyUp(Keys.LControlKey);
             }
             if (Keyboard.IsKeyDown((int) Settings.DropHotkey.Value))
             {
@@ -448,6 +451,7 @@ namespace Stashie
                             sended = true;
                             foreach (var item in visibleInventoryItems)
                             {
+                                if(item==null) continue;
                                 if (!CheckIgnoreCells(item) && item.Item.Path.Contains(pathCheck))
                                 {
                                     sended = false;
