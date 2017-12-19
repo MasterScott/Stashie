@@ -928,18 +928,11 @@ namespace Stashie
 
             for (var i = 0; i < totalStashes; i++)
             {
-                var stashTabToGoTo = openLeftPanel
-                    .Children[2]
-                    .Children[0]
-                    .Children[1]
-                    .Children[1]
-                    .Children[i];
-                //.Children[0];
-
-                if (stashTabToGoTo.IsVisible)
-                {
+                var stashTabToGoTo = GameController.Game.IngameState.ServerData.StashPanel.GetStashInventoryByIndex(i);
+                if (stashTabToGoTo == null )
+                    continue;
+                if(stashTabToGoTo.InventoryUiElement.IsVisible)
                     return i;
-                }
             }
 
             return -1;
