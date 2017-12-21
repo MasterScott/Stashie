@@ -42,6 +42,8 @@ namespace Stashie.Filters
         //Boolean
         private const string PARAMETER_IDENTIFIED = "identified";
 
+        private const string PARAMETER_ISELDER = "Elder";
+        private const string PARAMETER_ISSHAPER = "Shaper";
         //Operations
         private const string OPERATION_NONEQUALITY = "!=";
 
@@ -172,6 +174,19 @@ namespace Stashie.Filters
                 return true;
             }
 
+            if (command.Contains(PARAMETER_ISELDER))
+            {
+                var elderCommand = new ElderItemFiler {isElder = command[0] != CYMBOL_NOT};
+                newFilter.Filters.Add(elderCommand);
+                return true;
+            }
+            
+            if (command.Contains(PARAMETER_ISSHAPER))
+            {
+                var shaperCommand = new ShaperItemFiler {isShaper = command[0] != CYMBOL_NOT};
+                newFilter.Filters.Add(shaperCommand);
+                return true;
+            }
             string parameter;
             string operation;
             string value;
@@ -363,6 +378,24 @@ namespace Stashie.Filters
         }
     }
 
+    public class ElderItemFiler : IIFilter
+    {
+        public bool isElder;
+        public bool CompareItem(ItemData itemData)
+        {
+            return itemData.isElder == isElder;
+        }
+    }
+
+    public class ShaperItemFiler : IIFilter
+    {
+        public bool isShaper;
+
+        public bool CompareItem(ItemData itemData)
+        {
+            return itemData.isShaper == isShaper;
+        }
+    }
     public class FilterParameterCompare : IIFilter
     {
         public string CompareString;

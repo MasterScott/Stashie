@@ -295,7 +295,7 @@ namespace Stashie
                 if (uiTabsOpened)
                 {
                     CoroutineWorker =
-                        (new Coroutine(ProcessInventoryItems(), nameof(Stashie), "Main Worker")).RunParallel();
+                        (new Coroutine(ProcessInventoryItems(), nameof(Stashie), "Drop To Stash")).RunParallel();
                 }
             }
         }
