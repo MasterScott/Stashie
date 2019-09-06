@@ -1,20 +1,10 @@
-﻿#region Header
-
-//-----------------------------------------------------------------
-//   Class:          FilterParser
-//   Description:    Parsing custom filters from config
-//   Author:         Stridemann        Date: 08.26.2017
-//-----------------------------------------------------------------
-
-#endregion
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using PoeHUD.Plugins;
-using Stashie.Settings;
+using Basic;
+using Exile;
 
-namespace Stashie.Filters
+namespace Stashie
 {
     public class FilterParser
     {
@@ -44,6 +34,9 @@ namespace Stashie.Filters
 
         private const string PARAMETER_ISELDER = "Elder";
         private const string PARAMETER_ISSHAPER = "Shaper";
+
+        private const string PARAMETER_ISFRACTURED = "Fractured";
+
         //Operations
         private const string OPERATION_NONEQUALITY = "!=";
 
@@ -58,19 +51,11 @@ namespace Stashie.Filters
 
         private static readonly string[] Operations =
         {
-            OPERATION_NONEQUALITY,
-            OPERATION_LESSEQUAL,
-            OPERATION_BIGGERQUAL,
-            OPERATION_NOTCONTAINS,
-
-            OPERATION_EQUALITY,
-            OPERATION_BIGGER,
-            OPERATION_LESS,
-            OPERATION_CONTAINS,
+            OPERATION_NONEQUALITY, OPERATION_LESSEQUAL, OPERATION_BIGGERQUAL, OPERATION_NOTCONTAINS, OPERATION_EQUALITY,
+            OPERATION_BIGGER, OPERATION_LESS, OPERATION_CONTAINS,
         };
 
-        public static List<CustomFilter> Parse(string[] filtersLines)
-        {
+        public static List<CustomFilter> Parse(string[] filtersLines) {
             var allFilters = new List<CustomFilter>();
 
             for (var i = 0; i < filtersLines.Length; ++i)
@@ -79,28 +64,19 @@ namespace Stashie.Filters
 
                 filterLine = filterLine.Replace("\t", "");
 
-                if (filterLine.StartsWith(COMMENTCYMBOL))
-                {
-                    continue;
-                }
-                if (filterLine.StartsWith(COMMENTCYMBOLALT))
-                {
-                    continue;
-                }
+                if (filterLine.StartsWith(COMMENTCYMBOL)) continue;
+                if (filterLine.StartsWith(COMMENTCYMBOLALT)) continue;
 
-                if (filterLine.Replace(" ", "").Length == 0)
-                {
-                    continue;
-                }
+                if (filterLine.Replace(" ", "").Length == 0) continue;
 
                 var nameIndex = filterLine.IndexOf(CYMBOL_NAMEDIVIDE);
                 if (nameIndex == -1)
                 {
-                    BasePlugin.LogMessage("Filter parser: Can't find filter name in line: " + (i + 1), 5);
+                    DebugWindow.LogMsg("Filter parser: Can't find filter name in line: " + (i + 1), 5);
                     continue;
                 }
-                var newFilter = new CustomFilter {Name = filterLine.Substring(0, nameIndex)};
-                TrimName(ref newFilter.Name);
+
+                var newFilter = new CustomFilter {Name = filterLine.Substring(0, nameIndex).Trim(), Index = i + 1};
 
                 var filterCommandsLine = filterLine.Substring(nameIndex + 1);
 
@@ -112,15 +88,13 @@ namespace Stashie.Filters
                 }
 
                 var filterCommands = filterCommandsLine.Split(CYMBOL_COMMANDSDIVIDE);
+                newFilter.Commands = filterCommandsLine;
 
                 var filterErrorParse = false;
 
                 foreach (var command in filterCommands)
                 {
-                    if (string.IsNullOrEmpty(command.Replace(" ", "")))
-                    {
-                        continue;
-                    }
+                    if (string.IsNullOrEmpty(command.Replace(" ", ""))) continue;
 
                     if (command.Contains(CYMBOL_COMMAND_FILTER_OR))
                     {
@@ -130,42 +104,30 @@ namespace Stashie.Filters
 
                         foreach (var t in orFilterCommands)
                         {
-                            if (ProcessCommand(newOrFilter, t))
-                            {
-                                continue;
-                            }
+                            if (ProcessCommand(newOrFilter, t)) continue;
                             filterErrorParse = true;
                             break;
                         }
 
-                        if (filterErrorParse)
-                        {
-                            break;
-                        }
+                        if (filterErrorParse) break;
                     }
                     else
                     {
-                        if (ProcessCommand(newFilter, command))
-                        {
-                            continue;
-                        }
+                        if (ProcessCommand(newFilter, command)) continue;
 
                         filterErrorParse = true;
                         break;
                     }
                 }
 
-                if (!filterErrorParse)
-                {
-                    allFilters.Add(newFilter);
-                }
+                if (!filterErrorParse) allFilters.Add(newFilter);
             }
+
             return allFilters;
         }
 
-        private static bool ProcessCommand(BaseFilter newFilter, string command)
-        {
-            TrimName(ref command);
+        private static bool ProcessCommand(BaseFilter newFilter, string command) {
+            command = command.Trim();
 
             if (command.Contains(PARAMETER_IDENTIFIED))
             {
@@ -180,20 +142,28 @@ namespace Stashie.Filters
                 newFilter.Filters.Add(elderCommand);
                 return true;
             }
-            
+
             if (command.Contains(PARAMETER_ISSHAPER))
             {
                 var shaperCommand = new ShaperItemFiler {isShaper = command[0] != CYMBOL_NOT};
                 newFilter.Filters.Add(shaperCommand);
                 return true;
             }
+
+            if (command.Contains(PARAMETER_ISFRACTURED))
+            {
+                var synthesisCommand = new FracturedItemFiler() {isFractured = command[0] != CYMBOL_NOT};
+                newFilter.Filters.Add(synthesisCommand);
+                return true;
+            }
+
             string parameter;
             string operation;
             string value;
 
             if (!ParseCommand(command, out parameter, out operation, out value))
             {
-                BasePlugin.LogMessage("Filter parser: Can't parse filter part: " + command, 5);
+                DebugWindow.LogMsg("Filter parser: Can't parse filter part: " + command, 5);
                 return false;
             }
 
@@ -216,19 +186,21 @@ namespace Stashie.Filters
                     break;
                 case PARAMETER_QUALITY:
                     stringComp.IntParameter = data => data.ItemQuality;
+                    stringComp.CompareInt = int.Parse(value);
                     stringComp.StringParameter = data => data.ItemQuality.ToString();
                     break;
                 case PARAMETER_MapTier:
                     stringComp.IntParameter = data => data.MapTier;
+                    stringComp.CompareInt = int.Parse(value);
                     stringComp.StringParameter = data => data.MapTier.ToString();
                     break;
                 case PARAMETER_ILVL:
                     stringComp.IntParameter = data => data.ItemLevel;
+                    stringComp.CompareInt = int.Parse(value);
                     stringComp.StringParameter = data => data.ItemLevel.ToString();
                     break;
                 default:
-                    BasePlugin.LogMessage(
-                        $"Filter parser: Parameter is not defined in code: {parameter}", 10);
+                    DebugWindow.LogMsg($"Filter parser: Parameter is not defined in code: {parameter}", 10);
                     return false;
             }
 
@@ -251,48 +223,51 @@ namespace Stashie.Filters
                 case OPERATION_BIGGER:
                     if (stringComp.IntParameter == null)
                     {
-                        BasePlugin.LogMessage(
+                        DebugWindow.LogMsg(
                             $"Filter parser error: Can't compare string parameter with {OPERATION_BIGGER} (numerical) operation. Statement: {command}",
                             10);
                         return false;
                     }
+
                     stringComp.CompDeleg = data => stringComp.IntParameter(data) > stringComp.CompareInt;
                     break;
                 case OPERATION_LESS:
                     if (stringComp.IntParameter == null)
                     {
-                        BasePlugin.LogMessage(
+                        DebugWindow.LogMsg(
                             $"Filter parser error: Can't compare string parameter with {OPERATION_LESS} (numerical) operation. Statement: {command}",
                             10);
                         return false;
                     }
+
                     stringComp.CompDeleg = data => stringComp.IntParameter(data) < stringComp.CompareInt;
                     break;
                 case OPERATION_LESSEQUAL:
                     if (stringComp.IntParameter == null)
                     {
-                        BasePlugin.LogMessage(
+                        DebugWindow.LogMsg(
                             $"Filter parser error: Can't compare string parameter with {OPERATION_LESSEQUAL} (numerical) operation. Statement: {command}",
                             10);
                         return false;
                     }
+
                     stringComp.CompDeleg = data => stringComp.IntParameter(data) <= stringComp.CompareInt;
                     break;
 
                 case OPERATION_BIGGERQUAL:
                     if (stringComp.IntParameter == null)
                     {
-                        BasePlugin.LogMessage(
+                        DebugWindow.LogMsg(
                             $"Filter parser error: Can't compare string parameter with {OPERATION_BIGGERQUAL} (numerical) operation. Statement: {command}",
                             10);
                         return false;
                     }
+
                     stringComp.CompDeleg = data => stringComp.IntParameter(data) >= stringComp.CompareInt;
                     break;
 
                 default:
-                    BasePlugin.LogMessage(
-                        $"Filter parser: Operation is not defined in code: {operation}", 10);
+                    DebugWindow.LogMsg($"Filter parser: Operation is not defined in code: {operation}", 10);
                     return false;
             }
 
@@ -301,8 +276,7 @@ namespace Stashie.Filters
         }
 
 
-        private static bool ParseCommand(string command, out string parameter, out string operation, out string value)
-        {
+        private static bool ParseCommand(string command, out string parameter, out string operation, out string value) {
             parameter = "";
             operation = "";
             value = "";
@@ -312,106 +286,18 @@ namespace Stashie.Filters
             {
                 operationIndex = command.IndexOf(t, StringComparison.Ordinal);
 
-                if (operationIndex == -1)
-                {
-                    continue;
-                }
+                if (operationIndex == -1) continue;
 
                 operation = t;
                 break;
             }
 
-            if (operationIndex == -1)
-            {
-                return false;
-            }
+            if (operationIndex == -1) return false;
 
-            parameter = command.Substring(0, operationIndex);
-            TrimName(ref parameter);
+            parameter = command.Substring(0, operationIndex).Trim();
 
-            value = command.Substring(operationIndex + operation.Length);
-            TrimName(ref value); //Should I do this?
+            value = command.Substring(operationIndex + operation.Length).Trim();
             return true;
         }
-
-        private static void TrimName(ref string name)
-        {
-            name = name.TrimEnd(' ');
-            name = name.TrimStart(' ');
-        }
-    }
-
-    public class CustomFilter : BaseFilter
-    {
-        public string Name;
-        public ListIndexNode StashIndexNode;
-        public string SubmenuName;
-
-        public bool AllowProcess => StashIndexNode.Index != -1;
-    }
-
-    public class BaseFilter : IIFilter
-    {
-        public List<IIFilter> Filters = new List<IIFilter>();
-        public bool BAny;
-
-        public bool CompareItem(ItemData itemData)
-        {
-            if (BAny)
-            {
-                return Filters.Any(x => x.CompareItem(itemData));
-            }
-            else
-            {
-                return Filters.All(x => x.CompareItem(itemData));
-            }
-        }
-    }
-
-    public class IdentifiedItemFilter : IIFilter
-    {
-        public bool BIdentified;
-
-        public bool CompareItem(ItemData itemData)
-        {
-            return itemData.BIdentified == BIdentified;
-        }
-    }
-
-    public class ElderItemFiler : IIFilter
-    {
-        public bool isElder;
-        public bool CompareItem(ItemData itemData)
-        {
-            return itemData.isElder == isElder;
-        }
-    }
-
-    public class ShaperItemFiler : IIFilter
-    {
-        public bool isShaper;
-
-        public bool CompareItem(ItemData itemData)
-        {
-            return itemData.isShaper == isShaper;
-        }
-    }
-    public class FilterParameterCompare : IIFilter
-    {
-        public string CompareString;
-        public int CompareInt;
-        public Func<ItemData, string> StringParameter;
-        public Func<ItemData, int> IntParameter;
-        public Func<ItemData, bool> CompDeleg;
-
-        public bool CompareItem(ItemData itemData)
-        {
-            return CompDeleg(itemData);
-        }
-    }
-
-    public interface IIFilter
-    {
-        bool CompareItem(ItemData itemData);
     }
 }

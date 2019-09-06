@@ -1,18 +1,11 @@
-﻿#region Header
-
-//-----------------------------------------------------------------
-//   Class:          RefillParser
-//   Description:    Parsing custom refill processors from config
-//   Author:         Stridemann        Date: 08.26.2017
-//-----------------------------------------------------------------
-
-#endregion
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using PoeHUD.Hud.Settings;
-using PoeHUD.Plugins;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Exile;
+using Shared.Nodes;
 using SharpDX;
 
 namespace Stashie
@@ -25,15 +18,11 @@ namespace Stashie
         private const string SYMBOL_IGNORE = "#";
         private const string SYMBOL_IGNORE2 = "//";
 
-        public static List<RefillProcessor> Parse(string pluginDir)
-        {
+        public static List<RefillProcessor> Parse(string pluginDir) {
             var refills = new List<RefillProcessor>();
 
             var refillConfigPath = Path.Combine(pluginDir, REFILL_CONFIG);
-            if (!File.Exists(refillConfigPath))
-            {
-                return refills;
-            }
+            if (!File.Exists(refillConfigPath)) return refills;
 
             var configLines = File.ReadAllLines(refillConfigPath);
 
@@ -41,14 +30,8 @@ namespace Stashie
             {
                 var configLine = configLines[i];
                 configLine = configLine.Replace("\t", "");
-                if (configLine.Replace(" ", "").Length == 0)
-                {
-                    continue;
-                }
-                if (configLine.StartsWith(SYMBOL_IGNORE) || configLine.StartsWith(SYMBOL_IGNORE2))
-                {
-                    continue;
-                }
+                if (configLine.Replace(" ", "").Length == 0) continue;
+                if (configLine.StartsWith(SYMBOL_IGNORE) || configLine.StartsWith(SYMBOL_IGNORE2)) continue;
 
                 var newRefill = new RefillProcessor();
 
@@ -56,8 +39,7 @@ namespace Stashie
 
                 if (nameIndex == -1)
                 {
-                    BasePlugin.LogMessage(
-                        $"Refill parser: Can't find refill name in line: {configLine}. Name should have \":\" divider.", 10);
+                    DebugWindow.LogMsg($"Refill parser: Can't find refill name in line: {configLine}. Name should have \":\" divider.", 10);
                     continue;
                 }
 
@@ -70,8 +52,9 @@ namespace Stashie
 
                 if (configLineParams.Length != 4)
                 {
-                    BasePlugin.LogMessage(
-                        $"Refill parser: Config line should have 4 parameters (ClassName,StackSize,InventoryX,InventoryY): {configLine}, Ignoring refill..", 10);
+                    DebugWindow.LogMsg(
+                        $"Refill parser: Config line should have 4 parameters (ClassName,StackSize,InventoryX,InventoryY): {configLine}, Ignoring refill..",
+                        10);
                     continue;
                 }
 
@@ -80,7 +63,7 @@ namespace Stashie
 
                 if (!int.TryParse(configLineParams[1], out newRefill.StackSize))
                 {
-                    BasePlugin.LogMessage(
+                    DebugWindow.LogMsg(
                         $"Refill parser: Can't parse StackSize from 2nd parameter in line: {configLine} (line num: {i + 1}), Ignoring refill..",
                         10);
                     continue;
@@ -88,14 +71,15 @@ namespace Stashie
 
                 if (!int.TryParse(configLineParams[2], out newRefill.InventPos.X))
                 {
-                    BasePlugin.LogMessage(
+                    DebugWindow.LogMsg(
                         $"Refill parser: Can't parse InventoryX from 3rd parameter in line: {configLine} (line num: {i + 1}), Ignoring refill..",
                         10);
                     continue;
                 }
+
                 if (newRefill.InventPos.X < 1 || newRefill.InventPos.X > 12)
                 {
-                    BasePlugin.LogMessage(
+                    DebugWindow.LogMsg(
                         $"Refill parser: InventoryX should be in range 1-12, current value: {newRefill.InventPos.X}  (line num: {i + 1}), Ignoring refill..",
                         10);
                     continue;
@@ -103,14 +87,15 @@ namespace Stashie
 
                 if (!int.TryParse(configLineParams[3], out newRefill.InventPos.Y))
                 {
-                    BasePlugin.LogMessage(
+                    DebugWindow.LogMsg(
                         $"Refill parser: Can't parse InventoryY from 4th parameter in line: {configLine} (line num: {i + 1}), Ignoring refill..",
                         10);
                     continue;
                 }
+
                 if (newRefill.InventPos.Y < 1 || newRefill.InventPos.Y > 5)
                 {
-                    BasePlugin.LogMessage(
+                    DebugWindow.LogMsg(
                         $"Refill parser: InventPosY should be in range 1-5, current value: {newRefill.InventPos.Y} (line num: {i + 1}), Ignoring refill..",
                         10);
                     continue;
@@ -122,11 +107,11 @@ namespace Stashie
 
                 refills.Add(newRefill);
             }
+
             return refills;
         }
 
-        private static void TrimName(ref string name)
-        {
+        private static void TrimName(ref string name) {
             name = name.TrimEnd(' ');
             name = name.TrimStart(' ');
         }
@@ -145,10 +130,7 @@ namespace Stashie
 
         public Vector2 ClickPos;
 
-        public void Clear()
-        {
-            OwnedCount = 0;
-        }
+        public void Clear() => OwnedCount = 0;
     }
 
 
