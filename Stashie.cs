@@ -457,16 +457,18 @@ namespace Stashie
                 visibleStashIndex = -1;
                 visibleStashIndex = GetIndexOfCurrentVisibleTab();
                 var sortedByStash = _dropItems.OrderByDescending(x => x.StashIndex == visibleStashIndex).ThenBy(x => x.StashIndex).ToList();
-                var latency = (int) GameController.Game.IngameState.CurLatency + Settings.ExtraDelay;
+                var ingameStateCurLatency = GameController.Game.IngameState.CurLatency;
+                var latency = (int) ingameStateCurLatency + Settings.ExtraDelay;
                 Input.KeyDown(Keys.LControlKey);
                 var waitedItems = new List<FilterResult>(8);
-                yield return new WaitTime(latency);
+                var dropItemsToStashWaitTime = new WaitTime(latency);
+                yield return new WaitTime((int) ingameStateCurLatency);
                 LogMessage($"Want drop {sortedByStash.Count} items.");
                 foreach (var stashResults in sortedByStash)
                 {
                     coroutineIteration++;
                     CoroutineWorker?.UpdateTicks(coroutineIteration);
-                    var tryTime = DebugTimer.ElapsedMilliseconds + 2000;
+                    var tryTime = DebugTimer.ElapsedMilliseconds + 2000+latency;
                     if (stashResults.StashIndex != visibleStashIndex)
                     {
                         StackItemTimer.Restart();
@@ -500,7 +502,7 @@ namespace Stashie
                                 yield break;
                             }
 
-                            yield return new WaitTime(latency);
+                            yield return dropItemsToStashWaitTime;
                             if (StackItemTimer.ElapsedMilliseconds > 1000 + latency)
                                 break;
                         }
@@ -521,7 +523,7 @@ namespace Stashie
                     }
                     while (GetTypeOfCurrentVisibleStash() == InventoryType.InvalidInventory)
                     {
-                        yield return new WaitTime(latency);
+                        yield return dropItemsToStashWaitTime;
                         if (DebugTimer.ElapsedMilliseconds > tryTime)
                         {
                             LogMessage($"Error with inventory type, Index: {visibleStashIndex}", 1);
@@ -573,7 +575,7 @@ namespace Stashie
                     lastHoverItem = inventory.HoverItem;
                     Input.Click(MouseButtons.Left);
                     yield return wait10ms;
-
+                    yield return dropItemsToStashWaitTime;
                     var typeOfCurrentVisibleStash = GetTypeOfCurrentVisibleStash();
                     if (typeOfCurrentVisibleStash == InventoryType.MapStash || typeOfCurrentVisibleStash == InventoryType.DivinationStash)
                         waitedItems.Add(stashResults);
@@ -849,12 +851,14 @@ namespace Stashie
             var difference = tabIndex - indexOfCurrentVisibleTab;
             var tabIsToTheLeft = difference < 0;
             var retry = 0;
+            var waitTime = new WaitTime(Settings.ExtraDelay);
             while (GetIndexOfCurrentVisibleTab() != tabIndex && retry < 3)
             {
                 for (var i = 0; i < Math.Abs(difference); i++)
                 {
                     Input.KeyDown(tabIsToTheLeft ? Keys.Left : Keys.Right);
                     Input.KeyUp(tabIsToTheLeft ? Keys.Left : Keys.Right);
+                    yield return waitTime;
                     // yield return Input.KeyPress(tabIsToTheLeft ? Keys.Left : Keys.Right);
                 }
 
@@ -884,7 +888,7 @@ namespace Stashie
 
         private void SetupOrClose() {
             SaveDefaultConfigsToDisk();
-            _settingsListNodes = new List<ListIndexNode>();
+            _settingsListNodes = new List<ListIndexNode>(100);
             LoadCustomRefills();
             LoadCustomFilters();
             LoadIgnoredCells();
@@ -923,9 +927,10 @@ namespace Stashie
             }
 
             _renamedAllStashNames = new List<string> {"Ignore"};
-            for (var i = 0; i < Settings.AllStashNames.Count; i++)
+            var settingsAllStashNames = Settings.AllStashNames;
+            for (var i = 0; i < settingsAllStashNames.Count; i++)
             {
-                var realStashName = Settings.AllStashNames[i];
+                var realStashName = settingsAllStashNames[i];
                 if (_renamedAllStashNames.Contains(realStashName))
                 {
                     realStashName += " (" + i + ")";
@@ -940,40 +945,48 @@ namespace Stashie
             Settings.AllStashNames.Insert(0, "Ignore");
             foreach (var lOption in _settingsListNodes)
             {
-                lOption.SetListValues(_renamedAllStashNames);
-                var inventoryIndex = GetInventIndexByStashName(lOption.Value);
-                if (inventoryIndex == -1) //If the value doesn't exist in list (renamed)
+                try
                 {
-                    if (lOption.Index != -1) //If the value doesn't exist in list and the value was not Ignore
+                    lOption.SetListValues(_renamedAllStashNames);
+                    var inventoryIndex = GetInventIndexByStashName(lOption.Value);
+                    if (inventoryIndex == -1) //If the value doesn't exist in list (renamed)
                     {
+                        if (lOption.Index != -1) //If the value doesn't exist in list and the value was not Ignore
+                        {
 #if DebugMode
                         LogMessage("Tab renamed : " + lOption.Value + " to " + _renamedAllStashNames[lOption.Index + 1],
                             5);
 #endif
-                        if (lOption.Index >= _renamedAllStashNames.Count)
-                        {
-                            lOption.Index = -1;
-                            lOption.Value = _renamedAllStashNames[0];
+                            if (lOption.Index+1 >= _renamedAllStashNames.Count)
+                            {
+                                lOption.Index = -1;
+                                lOption.Value = _renamedAllStashNames[0];
+                            }
+                            else
+                                lOption.Value = _renamedAllStashNames[lOption.Index + 1]; //    Just update it's name
                         }
                         else
-                            lOption.Value = _renamedAllStashNames[lOption.Index + 1]; //    Just update it's name
+                        {
+                            lOption.Value = _renamedAllStashNames[0]; //Actually it was "Ignore", we just update it (can be removed)
+                        }
                     }
-                    else
+                    else //tab just change it's index
                     {
-                        lOption.Value = _renamedAllStashNames[0]; //Actually it was "Ignore", we just update it (can be removed)
-                    }
-                }
-                else //tab just change it's index
-                {
 #if DebugMode
                     if (lOption.Index != inventoryIndex)
                     {
                         LogMessage("Tab moved: " + lOption.Index + " to " + inventoryIndex, 5);
                     }
 #endif
-                    lOption.Index = inventoryIndex;
-                    lOption.Value = _renamedAllStashNames[inventoryIndex + 1];
+                        lOption.Index = inventoryIndex;
+                        lOption.Value = _renamedAllStashNames[inventoryIndex + 1];
+                    }
                 }
+                catch (Exception e)
+                {
+                    DebugWindow.LogError($"UpdateStashNames _settingsListNodes {e}");
+                }
+                
             }
 
             GenerateMenu();
